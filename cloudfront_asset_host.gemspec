@@ -56,7 +56,6 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_runtime_dependency(%q<right_aws>, [">= 0"])
       s.add_development_dependency(%q<activesupport>, ["= 2.3.9"])
       s.add_development_dependency(%q<actionpack>, ["= 2.3.9"])
       s.add_development_dependency(%q<shoulda>, [">= 0"])
@@ -64,7 +63,6 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<redgreen>, [">= 0"])
       s.add_development_dependency(%q<turn>, [">= 0"])
     else
-      s.add_dependency(%q<right_aws>, [">= 0"])
       s.add_dependency(%q<activesupport>, ["= 2.3.9"])
       s.add_dependency(%q<actionpack>, ["= 2.3.9"])
       s.add_dependency(%q<shoulda>, [">= 0"])
@@ -73,7 +71,6 @@ Gem::Specification.new do |s|
       s.add_dependency(%q<turn>, [">= 0"])
     end
   else
-    s.add_dependency(%q<right_aws>, [">= 0"])
     s.add_dependency(%q<activesupport>, ["= 2.3.9"])
     s.add_dependency(%q<actionpack>, ["= 2.3.9"])
     s.add_dependency(%q<shoulda>, [">= 0"])

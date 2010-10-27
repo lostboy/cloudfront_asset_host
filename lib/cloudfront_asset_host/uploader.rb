@@ -1,4 +1,3 @@
-require 'right_aws'
 require 'tempfile'
 
 module CloudfrontAssetHost
@@ -32,6 +31,8 @@ module CloudfrontAssetHost
             #puts "path= #{path[(Rails.root.to_s.length+7)..-1]}"
             #puts "md5= #{CloudfrontAssetHost.key_for_path(path)}"
             sigs[path[(Rails.root.to_s.length+7)..-1]] = CloudfrontAssetHost.key_for_path(path)
+            
+            puts "mime for #{path[(Rails.root.to_s.length+7)..-1]} is #{ext_to_mime[extension]||'default'}"
             
             path = rewritten_css_path(path, sigs)
 
