@@ -12,6 +12,8 @@ module CloudfrontAssetHost
 
   # CNAME that is configured for the bucket or CloudFront distribution
   mattr_accessor :cname
+  
+  mattr_accessor :cloudfront_domain
 
   # Prefix keys
   mattr_accessor :key_prefix
@@ -67,6 +69,8 @@ module CloudfrontAssetHost
       self.plain_prefix = ""
 
       self.image_extensions = %w(jpg jpeg gif png)
+      
+      @@signatures = nil
 
       yield(self)
 
@@ -76,15 +80,20 @@ module CloudfrontAssetHost
     end
 
     def asset_host(source = nil, request = nil)
-      if cname.present?
-        if cname.is_a?(Proc)
-          host = cname.call(source, request)
-        else
-          host = (cname =~ /%d/) ? cname % (source.hash % 4) : cname.to_s
-          host = "http://#{host}"
-        end
+      #puts "[asset_host] #{source}"
+      if request.present? and request.ssl?
+        host = "http://#{cloudfront_domain}"
       else
-        host = "http://#{self.bucket_host}"
+        if cname.present?
+          if cname.is_a?(Proc)
+            host = cname.call(source, request)
+          else
+            host = (cname =~ /%d/) ? cname % (source.hash % 4) : cname.to_s
+            host = "http://#{host}"
+          end
+        else
+          host = "http://#{self.bucket_host}"
+        end
       end
 
       if source && request && CloudfrontAssetHost.gzip
@@ -140,6 +149,16 @@ module CloudfrontAssetHost
 
     def disable_cdn_for_source?(source)
       source.match(exclude_pattern) if exclude_pattern.present?
+    end
+    
+    def signatures
+      @@signatures ||= begin
+        YAML::load(File.new("#{Rails.root}/config/asset_signatures.yml"))
+      end
+    end
+    
+    def signatures=(sigs)
+      @@signatures = sigs
     end
 
   private

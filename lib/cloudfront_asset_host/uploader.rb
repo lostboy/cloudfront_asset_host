@@ -22,22 +22,31 @@ module CloudfrontAssetHost
         gzip = options[:gzip] || false
         dryrun = options[:dryrun] || false
         verbose = options[:verbose] || false
-
+        sigs = Hash.new
         keys_paths.each do |key, path|
           if should_upload?(key, options)
             puts "+ #{key}" if verbose
 
             extension = File.extname(path)[1..-1]
-
-            path = rewritten_css_path(path)
+            
+            #puts "path= #{path[(Rails.root.to_s.length+7)..-1]}"
+            #puts "md5= #{CloudfrontAssetHost.key_for_path(path)}"
+            sigs[path[(Rails.root.to_s.length+7)..-1]] = CloudfrontAssetHost.key_for_path(path)
+            
+            path = rewritten_css_path(path, sigs)
 
             data_path = gzip ? gzipped_path(path) : path
-            bucket.put(key, File.read(data_path), {}, 'public-read', headers_for_path(extension, gzip)) unless dryrun
+            
+            s3.put_object(CloudfrontAssetHost.bucket, key, File.read(data_path), headers_for_path(extension, gzip).merge(:"x-amz-acl" => 'public-read')) unless dryrun
 
             File.unlink(data_path) if gzip && File.exists?(data_path)
           else
             puts "= #{key}" if verbose
           end
+        end
+        CloudfrontAssetHost.signatures = sigs
+        File.open("#{Rails.root}/config/asset_signatures.yml", "w") do |f|
+          f.write(sigs.to_yaml)
         end
       end
 
@@ -54,9 +63,9 @@ module CloudfrontAssetHost
         tmp.path
       end
 
-      def rewritten_css_path(path)
+      def rewritten_css_path(path, sigs)
         if CloudfrontAssetHost.css?(path)
-          tmp = CloudfrontAssetHost::CssRewriter.rewrite_stylesheet(path)
+          tmp = CloudfrontAssetHost::CssRewriter.rewrite_stylesheet(path, sigs)
           tmp.path
         else
           path
@@ -92,12 +101,12 @@ module CloudfrontAssetHost
 
       def existing_keys
         @existing_keys ||= begin
-          keys = []
-          prefix = CloudfrontAssetHost.key_prefix
-          prefix = "#{CloudfrontAssetHost.plain_prefix}/#{prefix}" if CloudfrontAssetHost.plain_prefix.present?
-          keys.concat bucket.keys('prefix' => prefix).map  { |key| key.name }
-          keys.concat bucket.keys('prefix' => CloudfrontAssetHost.gzip_prefix).map { |key| key.name }
-          keys
+          bucket_keys = s3.get_bucket(CloudfrontAssetHost.bucket).body["Contents"]
+          bucket_keys.find_all do |key| 
+            puts key["Key"]
+            !key["Key"][/^app\//].nil?
+            
+          end          
         end
       end
 
@@ -130,7 +139,8 @@ module CloudfrontAssetHost
       end
 
       def s3
-        @s3 ||= RightAws::S3.new(config['access_key_id'], config['secret_access_key'])
+        #@s3 ||= RightAws::S3.new(config['access_key_id'], config['secret_access_key'])
+        @s3 ||= Fog::AWS::Storage.new(:aws_access_key_id => config['access_key_id'], :aws_secret_access_key => config['secret_access_key'])
       end
 
       def config

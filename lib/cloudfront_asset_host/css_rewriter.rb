@@ -13,10 +13,10 @@ module CloudfrontAssetHost
 
       # Returns the path to the temporary file that contains the
       # rewritten stylesheet
-      def rewrite_stylesheet(path)
+      def rewrite_stylesheet(path, sigs)
         contents = File.read(path)
         contents.gsub!(ReplaceRexeg) do |match|
-          rewrite_asset_link(match, path)
+          rewrite_asset_link(match, path, sigs)
         end
 
         tmp = Tempfile.new("cfah-css")
@@ -27,12 +27,12 @@ module CloudfrontAssetHost
 
     private
 
-      def rewrite_asset_link(asset_link, stylesheet_path)
+      def rewrite_asset_link(asset_link, stylesheet_path, sigs)
         url = asset_link.match(ReplaceRexeg)[1]
         if url
-          path = path_for_url(url, stylesheet_path)
-
+          path = path_for_url(url.split('#').first, stylesheet_path)
           if path.present? && File.exists?(path)
+            sigs[path[(Rails.root.to_s.length+7)..-1]] = CloudfrontAssetHost.key_for_path(path)
             key = CloudfrontAssetHost.key_for_path(path) + path.gsub(Rails.public_path, '')
             "url(#{CloudfrontAssetHost.asset_host(url)}/#{key})"
           else
